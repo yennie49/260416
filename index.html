@@ -3,49 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>쿠폰 그룹 정보 실시간 확인</title>
+    <title>실시간 매출 대시보드</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; padding: 20px; background-color: #f5f5f5; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 600px; word-break: break-all; }
-        h1 { color: #333; font-size: 20px; margin-bottom: 10px; }
-        p { color: #666; line-height: 1.6; margin: 5px 0; }
-        .tag { display: inline-block; background: #e8eaf6; color: #283593; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-bottom: 10px;}
-        pre { background: #282c34; color: #abb2bf; padding: 15px; border-radius: 8px; font-size: 13px; overflow-x: auto; white-space: pre-wrap; margin-top: 15px; }
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #333; }
+        h1 { font-size: 24px; margin-bottom: 20px; text-align: center; }
+        
+        /* 컨트롤 패널 (상단 옵션) */
+        .dashboard-controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center; }
+        .dashboard-controls input, .dashboard-controls select { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        
+        /* 통계 패널 */
+        .stats-panel { display: flex; gap: 20px; font-size: 16px; font-weight: bold; background: #e8f5e9; padding: 10px 20px; border-radius: 8px; border: 1px solid #c8e6c9; }
+        .stat-pay { color: #2e7d32; }
+        .stat-cancel { color: #c62828; }
+
+        h2 { font-size: 18px; color: #2c3e50; margin-top: 30px; border-bottom: 2px solid #2c3e50; padding-bottom: 5px; }
+        
+        /* PC 웹용 테이블 스타일 */
+        .web-view { width: 100%; overflow-x: auto; margin-bottom: 40px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; min-width: 800px; }
+        th { background-color: #4CAF50; color: white; padding: 12px; border: 1px solid #ddd; position: sticky; top: 0; }
+        td { padding: 12px; border: 1px solid #ddd; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .canceled-row { background-color: #ffebee !important; color: #c62828; text-decoration: line-through; }
+        
+        /* 모바일용 카드 스타일 */
+        .mobile-view { display: flex; flex-direction: column; gap: 15px; }
+        .card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 14px; border-left: 5px solid #4CAF50; }
+        .card.canceled { border-left-color: #f44336; background-color: #fafafa; }
+        .card.canceled .card-price { color: #c62828; text-decoration: line-through; }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .card-time { color: #666; font-size: 12px; font-weight: bold; }
+        .card-price { font-weight: bold; color: #1976d2; font-size: 16px; }
+        .card-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .card-label { color: #888; width: 70px; }
+        .card-value { font-weight: 500; text-align: right; }
+        .badge { background: #f44336; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; text-decoration: none; display: inline-block; }
     </style>
 </head>
 <body>
-    <div class="card" id="store-card">
-        <p>데이터를 불러오는 중...</p>
+
+    <h1>📊 실시간 매출 대시보드</h1>
+
+    <div class="dashboard-controls">
+        <input type="date" id="dateInput" value="2026-04-16" onchange="fetchData()">
+        <select id="timeFilter" onchange="renderData()">
+            <option value="all">전체 시간대</option>
+            </select>
+        
+        <div class="stats-panel">
+            <div class="stat-pay">✅ 결제: <span id="payCount">0</span>건</div>
+            <div class="stat-cancel">❌ 취소: <span id="cancelCount">0</span>건</div>
+        </div>
+    </div>
+
+    <h2>💻 상세 내역</h2>
+    <div class="web-view">
+        <table>
+            <thead>
+                <tr>
+                    <th>결제번호</th>
+                    <th>시간</th>
+                    <th>회사명</th>
+                    <th>결제자</th>
+                    <th>메뉴명</th>
+                    <th>상태</th>
+                    <th>결제금액</th>
+                </tr>
+            </thead>
+            <tbody id="web-tbody">
+                <tr><td colspan="7">데이터를 불러오는 중입니다...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h2>📱 모바일 뷰</h2>
+    <div class="mobile-view" id="mobile-container">
+        <p>데이터를 불러오는 중입니다...</p>
     </div>
 
     <script>
-        const api_url = "https://store-api.sikdae.com/v1/store/coupon/group?sid=019C502F-6E25-75DD-BC5F-235895CEC4BA&date=2026-04-16&page=1&pageRow=15";
+        const sid = "019C502F-6E25-75DD-BC5F-235895CEC4BA";
+        const token = "Bearer vcY8HTFgT0xYVyRmu9I8fuwYJD6RCZZmoAaHDP4sZZTS1Me7kwygyLgtPBqZgz8y";
+        let allSalesData = []; // 서버에서 가져온 원본 데이터를 저장하는 곳
 
-        async function getStoreData() {
+        // 1. 시간대 필터 옵션(00시~23시) 자동 생성
+        const timeSelect = document.getElementById('timeFilter');
+        for (let i = 0; i < 24; i++) {
+            const hour = String(i).padStart(2, '0');
+            const option = document.createElement('option');
+            option.value = i; // 숫자 0~23
+            option.textContent = `${hour}시 단위`;
+            timeSelect.appendChild(option);
+        }
+
+        // 2. 시간 숫자를 예쁜 날짜 형식으로 바꾸는 함수
+        function formatDate(unixTime) {
+            const date = new Date(unixTime * 1000);
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            const sec = String(date.getSeconds()).padStart(2, '0');
+            return `${h}:${min}:${sec}`;
+        }
+
+        // 3. API 서버에서 데이터 가져오기 (1000개 요청)
+        async function fetchData() {
+            const selectedDate = document.getElementById('dateInput').value;
+            // pageRow=1000 으로 변경하여 한 번에 최대 1000개까지 가져옵니다.
+            const api_url = `https://store-api.sikdae.com/v1/store/coupon/group?sid=${sid}&date=${selectedDate}&page=1&pageRow=1000`;
+            
             try {
-                // 서버에 데이터 요청 시, 헤더(headers)에 입장권(토큰)을 함께 보냅니다!
+                document.getElementById('web-tbody').innerHTML = '<tr><td colspan="7">데이터를 불러오는 중입니다...</td></tr>';
+                document.getElementById('mobile-container').innerHTML = '<p>데이터를 불러오는 중입니다...</p>';
+
                 const response = await fetch(api_url, {
-                    headers: {
-                        "Authorization": "Bearer vcY8HTFgT0xYVyRmu9I8fuwYJD6RCZZmoAaHDP4sZZTS1Me7kwygyLgtPBqZgz8y"
-                    }
+                    headers: { "Authorization": token }
                 });
                 
                 const data = await response.json();
+                allSalesData = data.sales || []; // 원본 데이터 저장
                 
-                document.getElementById('store-card').innerHTML = `
-                    <span class="tag">쿠폰 그룹 데이터 (2026-04-16 기준)</span>
-                    <h1>데이터 호출 성공! 🎉</h1>
-                    <p>입장권(토큰)을 제시하고 무사히 데이터를 받아왔습니다.</p>
-                    <pre>${JSON.stringify(data, null, 2)}</pre>
-                `;
+                renderData(); // 가져온 데이터를 화면에 뿌리기
             } catch (error) {
-                document.getElementById('store-card').innerHTML = `
-                    <p style="color:red;">데이터를 불러오는 데 실패했습니다.<br>
-                    (개발자 도구(F12)의 Console 탭에서 상세 에러를 확인해 보세요.)</p>
-                `;
+                const errorMsg = '<p style="color:red; text-align:center;">데이터를 불러오는 데 실패했습니다. (토큰 만료 의심)</p>';
+                document.getElementById('web-tbody').innerHTML = `<tr><td colspan="7">${errorMsg}</td></tr>`;
+                document.getElementById('mobile-container').innerHTML = errorMsg;
             }
         }
-        getStoreData();
+
+        // 4. 데이터를 필터링하고 화면에 그리기
+        function renderData() {
+            const timeFilterValue = document.getElementById('timeFilter').value;
+            
+            // 시간대 필터링 적용
+            let filteredList = allSalesData;
+            if (timeFilterValue !== 'all') {
+                filteredList = allSalesData.filter(item => {
+                    const itemDate = new Date(item.useDate * 1000);
+                    return itemDate.getHours() === parseInt(timeFilterValue);
+                });
+            }
+
+            // 통계 계산 (결제/취소 건수)
+            let payCount = 0;
+            let cancelCount = 0;
+            
+            let webHtml = '';
+            let mobileHtml = '';
+
+            if (filteredList.length === 0) {
+                webHtml = '<tr><td colspan="7">해당 조건의 결제 내역이 없습니다.</td></tr>';
+                mobileHtml = '<p>해당 조건의 결제 내역이 없습니다.</p>';
+            } else {
+                filteredList.forEach(item => {
+                    // 통계 누적
+                    if (item.isCanceled) cancelCount++;
+                    else payCount++;
+
+                    const timeStr = formatDate(item.useDate);
+                    const priceStr = item.price.toLocaleString() + '원';
+                    const typeStr = item.couponType === 'SINGLE' ? '혼자결제' : item.couponType;
+                    const statusHtml = item.isCanceled ? '<span class="badge">취소됨</span>' : '정상승인';
+                    const rowClass = item.isCanceled ? 'canceled-row' : '';
+                    const cardClass = item.isCanceled ? 'card canceled' : 'card';
+
+                    // 웹용 표(Table) 만들기
+                    webHtml += `
+                        <tr class="${rowClass}">
+                            <td>${item.payRoomIdx}</td>
+                            <td>${timeStr}</td>
+                            <td>${item.comName}</td>
+                            <td>${item.leaderName}</td>
+                            <td>${item.menuName}</td>
+                            <td>${statusHtml}</td>
+                            <td style="font-weight:bold;">${priceStr}</td>
+                        </tr>
+                    `;
+
+                    // 모바일용 카드(Card) 만들기
+                    mobileHtml += `
+                        <div class="${cardClass}">
+                            <div class="card-header">
+                                <span class="card-time">${timeStr} ${statusHtml}</span>
+                                <span class="card-price">${priceStr}</span>
+                            </div>
+                            <div class="card-row"><span class="card-label">결제번호</span><span class="card-value">${item.payRoomIdx}</span></div>
+                            <div class="card-row"><span class="card-label">회사명</span><span class="card-value">${item.comName}</span></div>
+                            <div class="card-row"><span class="card-label">결제자</span><span class="card-value">${item.leaderName}</span></div>
+                            <div class="card-row"><span class="card-label">메뉴</span><span class="card-value">${item.menuName} (${typeStr})</span></div>
+                        </div>
+                    `;
+                });
+            }
+
+            // HTML 반영
+            document.getElementById('web-tbody').innerHTML = webHtml;
+            document.getElementById('mobile-container').innerHTML = mobileHtml;
+            
+            // 통계 숫자 반영
+            document.getElementById('payCount').innerText = payCount;
+            document.getElementById('cancelCount').innerText = cancelCount;
+        }
+        
+        // 페이지가 열리자마자 최초 1회 실행
+        fetchData();
     </script>
 </body>
 </html>
