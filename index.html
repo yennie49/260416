@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>쿠폰 정보 실시간 확인</title>
+    <title>쿠폰 그룹 정보 실시간 확인</title>
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; padding: 20px; background-color: #f5f5f5; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 500px; word-break: break-all; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 600px; word-break: break-all; }
         h1 { color: #333; font-size: 20px; margin-bottom: 10px; }
         p { color: #666; line-height: 1.6; margin: 5px 0; }
-        .tag { display: inline-block; background: #e1f5fe; color: #01579b; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 10px;}
+        .tag { display: inline-block; background: #e8eaf6; color: #283593; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-bottom: 10px;}
         pre { background: #282c34; color: #abb2bf; padding: 15px; border-radius: 8px; font-size: 13px; overflow-x: auto; white-space: pre-wrap; margin-top: 15px; }
     </style>
 </head>
@@ -19,7 +19,7 @@
     </div>
 
     <script>
-        // 1. 요청하신 새로운 쿠폰 API 주소로 변경했습니다.
+        // 요청하신 새로운 쿠폰 그룹 API 주소로 변경되었습니다.
         const api_url = "https://store-api.sikdae.com/v1/store/coupon/group?sid=019C502F-6E25-75DD-BC5F-235895CEC4BA&date=2026-04-16&page=1&pageRow=15";
 
         async function getStoreData() {
@@ -27,11 +27,10 @@
                 const response = await fetch(api_url);
                 const data = await response.json();
                 
-                // 2. 쿠폰 API에 어떤 데이터 항목이 있는지 모두 볼 수 있도록 화면에 그대로 출력합니다.
                 document.getElementById('store-card').innerHTML = `
-                    <span class="tag">쿠폰 데이터 확인</span>
+                    <span class="tag">쿠폰 그룹 데이터 (2026-04-16 기준)</span>
                     <h1>데이터 호출 성공! 🎉</h1>
-                    <p>아래는 변경하신 주소에서 실시간으로 받아온 데이터입니다.</p>
+                    <p>요청하신 주소에서 받아온 최신 데이터입니다.</p>
                     <pre>${JSON.stringify(data, null, 2)}</pre>
                 `;
             } catch (error) {
@@ -41,7 +40,3 @@
                 `;
             }
         }
-        getStoreData();
-    </script>
-</body>
-</html>
