@@ -19,24 +19,33 @@
     </div>
 
     <script>
-        // 요청하신 새로운 쿠폰 그룹 API 주소로 변경되었습니다.
         const api_url = "https://store-api.sikdae.com/v1/store/coupon/group?sid=019C502F-6E25-75DD-BC5F-235895CEC4BA&date=2026-04-16&page=1&pageRow=15";
 
         async function getStoreData() {
             try {
-                const response = await fetch(api_url);
+                // 서버에 데이터 요청 시, 헤더(headers)에 입장권(토큰)을 함께 보냅니다!
+                const response = await fetch(api_url, {
+                    headers: {
+                        "Authorization": "Bearer vcY8HTFgT0xYVyRmu9I8fuwYJD6RCZZmoAaHDP4sZZTS1Me7kwygyLgtPBqZgz8y"
+                    }
+                });
+                
                 const data = await response.json();
                 
                 document.getElementById('store-card').innerHTML = `
                     <span class="tag">쿠폰 그룹 데이터 (2026-04-16 기준)</span>
                     <h1>데이터 호출 성공! 🎉</h1>
-                    <p>요청하신 주소에서 받아온 최신 데이터입니다.</p>
+                    <p>입장권(토큰)을 제시하고 무사히 데이터를 받아왔습니다.</p>
                     <pre>${JSON.stringify(data, null, 2)}</pre>
                 `;
             } catch (error) {
                 document.getElementById('store-card').innerHTML = `
                     <p style="color:red;">데이터를 불러오는 데 실패했습니다.<br>
-                    (API 서버에서 외부 웹사이트의 접근(CORS)을 차단했을 수 있습니다.)</p>
+                    (개발자 도구(F12)의 Console 탭에서 상세 에러를 확인해 보세요.)</p>
                 `;
             }
         }
+        getStoreData();
+    </script>
+</body>
+</html>
