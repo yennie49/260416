@@ -6,52 +6,46 @@
     <title>실시간 매출 현황</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; background-color: #F4F9FF; margin: 0; padding: 20px; color: #333; }
-        h1 { font-size: 24px; margin-bottom: 20px; text-align: center; color: #1E88E5; font-weight: bold; }
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #F0F7FF; margin: 0; padding: 20px; color: #333; overflow: hidden; }
+        h1 { font-size: 22px; margin: 0 0 20px 0; text-align: center; color: #1E88E5; }
         
-        /* 상단 조작부 */
-        .dashboard-controls { background: #FFFFFF; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(30, 136, 229, 0.08); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; border: 1px solid #E3F2FD; }
-        .control-group { display: flex; gap: 10px; align-items: center; }
+        /* 공통 컨트롤 스타일 */
+        .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .input-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .stats-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 5px; }
         
-        input, select { padding: 10px 15px; border: 1px solid #BBDEFB; border-radius: 8px; font-size: 14px; outline: none; color: #333; }
+        input, select { padding: 8px 12px; border: 1px solid #BBDEFB; border-radius: 6px; font-size: 13px; outline: none; background: #fff; }
         
-        /* 엑셀 다운로드 버튼 스타일 */
-        .download-btn { background-color: #1E88E5; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        /* 통계 박스 스타일 */
+        .stat-item { font-size: 13px; font-weight: bold; color: #1565C0; background: #E3F2FD; padding: 6px 12px; border-radius: 6px; flex: 1; text-align: center; }
+        .total-box { background: #2196F3; color: white; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-align: center; font-weight: bold; box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2); }
+
+        /* 엑셀 버튼 */
+        .download-btn { background-color: #1976D2; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: bold; }
         .download-btn:hover { background-color: #1565C0; }
 
-        /* 통계 및 총액 패널 */
-        .stats-container { display: flex; gap: 15px; align-items: center; }
-        .stats-panel { display: flex; gap: 15px; font-size: 14px; background: #E3F2FD; padding: 10px 18px; border-radius: 8px; color: #1565C0; font-weight: bold; }
-        .total-panel { background: #1E88E5; color: white; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: bold; box-shadow: 0 2px 6px rgba(30, 136, 229, 0.3); }
-        .stat-cancel { color: #78909C; text-decoration: none; }
+        /* 레이아웃 분할 */
+        .layout-wrapper { display: flex; gap: 20px; height: calc(100vh - 80px); }
+        .section { display: flex; flex-direction: column; background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #E3F2FD; }
         
-        /* 레이아웃 */
-        .layout-wrapper { display: flex; gap: 20px; height: calc(100vh - 180px); min-height: 600px; }
-        .section-title { font-size: 15px; color: #1565C0; margin: 0 0 10px 0; padding-bottom: 8px; border-bottom: 2px solid #BBDEFB; font-weight: bold; }
-        
-        /* 좌측 표 영역 */
-        .web-section { flex: 2; display: flex; flex-direction: column; background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(30, 136, 229, 0.05); border: 1px solid #E3F2FD; }
-        .web-view { flex: 1; overflow-y: auto; overflow-x: auto; border: 1px solid #E3F2FD; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; min-width: 700px; }
-        th { background-color: #64B5F6; color: white; padding: 14px; position: sticky; top: 0; z-index: 10; font-weight: 500; }
-        td { padding: 12px; border-bottom: 1px solid #E3F2FD; }
-        tr:hover { background-color: #F1F8FF; }
-        .canceled-row td { color: #9E9E9E; text-decoration: line-through; background-color: #FAFAFA; }
-        
-        /* 우측 앱 영역 */
-        .app-section { flex: 1; min-width: 350px; max-width: 400px; display: flex; flex-direction: column; background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(30, 136, 229, 0.05); border: 1px solid #E3F2FD; }
-        .mobile-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 5px; }
-        .card { background: #FFFFFF; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); font-size: 13px; border: 1px solid #E3F2FD; border-left: 4px solid #42A5F5; }
-        .card.canceled { border-left-color: #E0E0E0; background-color: #FAFAFA; }
-        .card-header { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #F0F0F0; padding-bottom: 8px; }
-        .card-price { font-weight: bold; color: #1E88E5; font-size: 15px; }
-        .card-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .card-label { color: #888; }
-        .badge { background: #9E9E9E; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; }
+        /* 좌측: 웹 뷰 */
+        .web-section { flex: 2; min-width: 0; }
+        .web-view { flex: 1; overflow: auto; border: 1px solid #E3F2FD; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; min-width: 650px; }
+        th { background-color: #64B5F6; color: white; padding: 12px; position: sticky; top: 0; z-index: 10; font-weight: 500; }
+        td { padding: 10px; border-bottom: 1px solid #E3F2FD; }
+        .canceled-row td { color: #B0BEC5; text-decoration: line-through; background-color: #FAFAFA; }
 
-        /* 스크롤바 커스텀 */
-        ::-webkit-scrollbar { width: 7px; height: 7px; }
-        ::-webkit-scrollbar-track { background: #F1F1F1; }
+        /* 우측: 앱 뷰 */
+        .app-section { flex: 1; min-width: 340px; max-width: 380px; }
+        .mobile-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 5px; }
+        .card { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #E3F2FD; border-left: 4px solid #42A5F5; font-size: 13px; }
+        .card.canceled { border-left-color: #CFD8DC; background-color: #FAFAFA; opacity: 0.8; }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #F5F5F5; padding-bottom: 6px; font-weight: bold; }
+        .card-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .label { color: #888; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #BBDEFB; border-radius: 10px; }
     </style>
 </head>
@@ -59,160 +53,128 @@
 
     <h1>📊 실시간 매출 현황</h1>
 
-    <div class="dashboard-controls">
-        <div class="control-group">
-            <input type="date" id="dateInput" value="2026-04-16" onchange="fetchData()">
-            <select id="timeFilter" onchange="renderData()">
-                <option value="all">전체 시간대</option>
-            </select>
-            <button class="download-btn" onclick="downloadExcel()">📁 엑셀 다운로드</button>
-        </div>
-        
-        <div class="stats-container">
-            <div class="stats-panel">
-                <span>결제: <span id="payCount">0</span>건</span>
-                <span class="stat-cancel">취소: <span id="cancelCount">0</span>건</span>
-            </div>
-            <div class="total-panel">
-                총액: <span id="totalAmount">0</span>원
-            </div>
-        </div>
-    </div>
-
     <div class="layout-wrapper">
-        <div class="web-section">
-            <h2 class="section-title">💻 상세 리스트 (웹 형식)</h2>
+        
+        <div class="section web-section">
+            <div class="controls">
+                <div class="input-row">
+                    <input type="date" id="webDate" value="2026-04-16" onchange="fetchData('web')">
+                    <select id="webTime" onchange="render('web')"><option value="all">전체 시간대</option></select>
+                    <button class="download-btn" onclick="downloadExcel()">📁 엑셀 다운로드</button>
+                </div>
+                <div class="stats-row">
+                    <div class="stat-item">결제: <span id="webPayCnt">0</span>건</div>
+                    <div class="stat-item" style="color:#78909C">취소: <span id="webCanCnt">0</span>건</div>
+                    <div class="total-box">총 <span id="webTotal">0</span>원</div>
+                </div>
+            </div>
             <div class="web-view">
                 <table>
                     <thead>
-                        <tr>
-                            <th>결제번호</th>
-                            <th>시간</th>
-                            <th>회사명</th>
-                            <th>결제자</th>
-                            <th>메뉴명</th>
-                            <th>상태</th>
-                            <th>결제금액</th>
-                        </tr>
+                        <tr><th>결제번호</th><th>시간</th><th>회사명</th><th>결제자</th><th>메뉴명</th><th>상태</th><th>금액</th></tr>
                     </thead>
-                    <tbody id="web-tbody"></tbody>
+                    <tbody id="webTableBody"></tbody>
                 </table>
             </div>
         </div>
 
-        <div class="app-section">
-            <h2 class="section-title">📱 카드 뷰 (앱 형식)</h2>
-            <div class="mobile-view" id="mobile-container"></div>
+        <div class="section app-section">
+            <div class="controls">
+                <div class="input-row">
+                    <input type="date" id="appDate" value="2026-04-16" onchange="fetchData('app')" style="flex:1">
+                    <select id="appTime" onchange="render('app')" style="flex:1"><option value="all">전체 시간대</option></select>
+                </div>
+                <div class="stats-row">
+                    <div class="stat-item">결제: <span id="appPayCnt">0</span>건</div>
+                    <div class="stat-item" style="color:#78909C">취소: <span id="appCanCnt">0</span>건</div>
+                    <div class="total-box" style="flex:1.5">총 <span id="appTotal">0</span>원</div>
+                </div>
+            </div>
+            <div class="mobile-view" id="appCardContainer"></div>
         </div>
+
     </div>
 
     <script>
         const sid = "019C502F-6E25-75DD-BC5F-235895CEC4BA";
         const token = "Bearer vcY8HTFgT0xYVyRmu9I8fuwYJD6RCZZmoAaHDP4sZZTS1Me7kwygyLgtPBqZgz8y";
-        let allSalesData = [];
-        let filteredList = []; // 현재 필터링된 리스트를 따로 저장 (엑셀용)
+        
+        // 데이터 저장소 분리
+        let dataStore = { web: [], app: [] };
 
-        // 시간대 옵션 자동생성
-        const timeSelect = document.getElementById('timeFilter');
-        for (let i = 0; i < 24; i++) {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = `${String(i).padStart(2, '0')}시 단위`;
-            timeSelect.appendChild(opt);
-        }
+        // 초기화
+        [document.getElementById('webTime'), document.getElementById('appTime')].forEach(sel => {
+            for(let i=0; i<24; i++) {
+                let opt = document.createElement('option');
+                opt.value = i; opt.textContent = `${String(i).padStart(2, '0')}시`;
+                sel.appendChild(opt);
+            }
+        });
 
-        function formatDate(unixTime) {
-            const date = new Date(unixTime * 1000);
-            return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
-        }
-
-        async function fetchData() {
-            const date = document.getElementById('dateInput').value;
+        async function fetchData(type) {
+            const date = document.getElementById(type + 'Date').value;
             const url = `https://store-api.sikdae.com/v1/store/coupon/group?sid=${sid}&date=${date}&page=1&pageRow=1000`;
-            
             try {
                 const res = await fetch(url, { headers: { "Authorization": token } });
-                const data = await res.json();
-                allSalesData = data.sales || [];
-                renderData();
-            } catch (e) {
-                alert("데이터를 가져오지 못했습니다. 토큰 만료를 확인하세요.");
-            }
+                const json = await res.json();
+                dataStore[type] = json.sales || [];
+                render(type);
+            } catch (e) { alert(type.toUpperCase() + " 데이터를 불러오지 못했습니다."); }
         }
 
-        function renderData() {
-            const timeFilter = document.getElementById('timeFilter').value;
+        function render(type) {
+            const timeVal = document.getElementById(type + 'Time').value;
+            const list = timeVal === 'all' ? dataStore[type] : dataStore[type].filter(i => new Date(i.useDate * 1000).getHours() === parseInt(timeVal));
             
-            // 필터링 적용
-            filteredList = timeFilter === 'all' ? allSalesData : allSalesData.filter(item => new Date(item.useDate * 1000).getHours() === parseInt(timeFilter));
+            let payCnt = 0, canCnt = 0, total = 0;
+            let html = '';
 
-            let payCount = 0, cancelCount = 0, totalAmount = 0;
-            let webHtml = '', mobileHtml = '';
-
-            filteredList.forEach(item => {
-                const isCanceled = item.isCanceled;
-                if (isCanceled) cancelCount++;
-                else {
-                    payCount++;
-                    totalAmount += item.price; // 취소되지 않은 금액만 합산
-                }
-
-                const timeStr = formatDate(item.useDate);
+            list.forEach(item => {
+                if (item.isCanceled) canCnt++;
+                else { payCnt++; total += item.price; }
+                
+                const timeStr = new Date(item.useDate * 1000).toLocaleTimeString('ko-KR', {hour12:false});
                 const priceStr = item.price.toLocaleString();
-                const status = isCanceled ? '<span class="badge">취소됨</span>' : '정상';
 
-                webHtml += `
-                    <tr class="${isCanceled ? 'canceled-row' : ''}">
-                        <td>${item.payRoomIdx}</td>
-                        <td>${timeStr}</td>
-                        <td>${item.comName}</td>
-                        <td>${item.leaderName}</td>
-                        <td>${item.menuName}</td>
-                        <td>${status}</td>
-                        <td style="font-weight:bold;">${priceStr}원</td>
+                if (type === 'web') {
+                    html += `<tr class="${item.isCanceled ? 'canceled-row' : ''}">
+                        <td>${item.payRoomIdx}</td><td>${timeStr}</td><td>${item.comName}</td>
+                        <td>${item.leaderName}</td><td>${item.menuName}</td>
+                        <td>${item.isCanceled ? '취소' : '정상'}</td><td style="font-weight:bold;">${priceStr}원</td>
                     </tr>`;
-
-                mobileHtml += `
-                    <div class="card ${isCanceled ? 'canceled' : ''}">
-                        <div class="card-header">
-                            <span style="font-weight:bold;">${timeStr} ${status}</span>
-                            <span class="card-price">${priceStr}원</span>
-                        </div>
-                        <div class="card-row"><span class="card-label">결제자</span><span>${item.leaderName} (${item.comName})</span></div>
-                        <div class="card-row"><span class="card-label">메뉴</span><span>${item.menuName}</span></div>
+                } else {
+                    html += `<div class="card ${item.isCanceled ? 'canceled' : ''}">
+                        <div class="card-header"><span>${timeStr}</span><span>${priceStr}원</span></div>
+                        <div class="card-row"><span class="label">결제자</span><span>${item.leaderName} (${item.comName})</span></div>
+                        <div class="card-row"><span class="label">상태</span><span>${item.isCanceled ? '취소됨' : '정상승인'}</span></div>
                     </div>`;
+                }
             });
 
-            document.getElementById('web-tbody').innerHTML = webHtml || '<tr><td colspan="7">데이터가 없습니다.</td></tr>';
-            document.getElementById('mobile-container').innerHTML = mobileHtml || '<p style="text-align:center; padding:20px; color:#888;">데이터가 없습니다.</p>';
-            document.getElementById('payCount').innerText = payCount;
-            document.getElementById('cancelCount').innerText = cancelCount;
-            document.getElementById('totalAmount').innerText = totalAmount.toLocaleString();
+            document.getElementById(type + 'PayCnt').innerText = payCnt;
+            document.getElementById(type + 'CanCnt').innerText = canCnt;
+            document.getElementById(type + 'Total').innerText = total.toLocaleString();
+
+            if (type === 'web') document.getElementById('webTableBody').innerHTML = html;
+            else document.getElementById('appCardContainer').innerHTML = html;
         }
 
-        // 엑셀 다운로드 기능
         function downloadExcel() {
-            if (filteredList.length === 0) return alert("다운로드할 데이터가 없습니다.");
-
-            const dataToExport = filteredList.map(item => ({
-                "결제번호": item.payRoomIdx,
-                "시간": formatDate(item.useDate),
-                "회사명": item.comName,
-                "결제자": item.leaderName,
-                "메뉴명": item.menuName,
-                "상태": item.isCanceled ? "취소" : "정상",
-                "금액": item.price
-            }));
-
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "매출현황");
+            const timeVal = document.getElementById('webTime').value;
+            const list = timeVal === 'all' ? dataStore.web : dataStore.web.filter(i => new Date(i.useDate * 1000).getHours() === parseInt(timeVal));
+            if (list.length === 0) return alert("데이터가 없습니다.");
             
-            const date = document.getElementById('dateInput').value;
-            XLSX.writeFile(workbook, `매출현황_${date}.xlsx`);
+            const ws = XLSX.utils.json_to_sheet(list.map(i => ({
+                "번호": i.payRoomIdx, "시간": new Date(i.useDate * 1000).toLocaleString(),
+                "회사": i.comName, "이름": i.leaderName, "메뉴": i.menuName,
+                "상태": i.isCanceled ? "취소" : "정상", "금액": i.price
+            })));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "매출");
+            XLSX.writeFile(wb, `매출_${document.getElementById('webDate').value}.xlsx`);
         }
 
-        fetchData();
+        fetchData('web'); fetchData('app');
     </script>
 </body>
 </html>
