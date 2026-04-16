@@ -3,75 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>실시간 매출 대시보드</title>
+    <title>실시간 매출 현황</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* 전체 폰트 및 배경 스카이블루&화이트 톤으로 정리 */
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #F4F9FF; margin: 0; padding: 20px; color: #333; }
         h1 { font-size: 24px; margin-bottom: 20px; text-align: center; color: #1E88E5; font-weight: bold; }
         
-        /* 상단 컨트롤 패널 */
-        .dashboard-controls { background: #FFFFFF; padding: 15px 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(30, 136, 229, 0.08); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center; border: 1px solid #E3F2FD; }
-        .dashboard-controls input, .dashboard-controls select { padding: 10px 15px; border: 1px solid #BBDEFB; border-radius: 8px; font-size: 14px; outline: none; color: #333; background: #fff; }
-        .dashboard-controls input:focus, .dashboard-controls select:focus { border-color: #2196F3; }
+        /* 상단 조작부 */
+        .dashboard-controls { background: #FFFFFF; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(30, 136, 229, 0.08); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; border: 1px solid #E3F2FD; }
+        .control-group { display: flex; gap: 10px; align-items: center; }
         
-        /* 통계 패널 */
-        .stats-panel { display: flex; gap: 20px; font-size: 15px; font-weight: bold; background: #E3F2FD; padding: 10px 20px; border-radius: 8px; color: #1565C0; }
-        .stat-cancel { color: #757575; } /* 취소건은 촌스러운 빨강 대신 세련된 그레이로 처리 */
+        input, select { padding: 10px 15px; border: 1px solid #BBDEFB; border-radius: 8px; font-size: 14px; outline: none; color: #333; }
         
-        /* 좌우 분할 레이아웃 (핵심) */
+        /* 엑셀 다운로드 버튼 스타일 */
+        .download-btn { background-color: #1E88E5; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .download-btn:hover { background-color: #1565C0; }
+
+        /* 통계 및 총액 패널 */
+        .stats-container { display: flex; gap: 15px; align-items: center; }
+        .stats-panel { display: flex; gap: 15px; font-size: 14px; background: #E3F2FD; padding: 10px 18px; border-radius: 8px; color: #1565C0; font-weight: bold; }
+        .total-panel { background: #1E88E5; color: white; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: bold; box-shadow: 0 2px 6px rgba(30, 136, 229, 0.3); }
+        .stat-cancel { color: #78909C; text-decoration: none; }
+        
+        /* 레이아웃 */
         .layout-wrapper { display: flex; gap: 20px; height: calc(100vh - 180px); min-height: 600px; }
-        .section-title { font-size: 16px; color: #1565C0; margin: 0 0 10px 0; padding-bottom: 8px; border-bottom: 2px solid #BBDEFB; font-weight: bold; }
+        .section-title { font-size: 15px; color: #1565C0; margin: 0 0 10px 0; padding-bottom: 8px; border-bottom: 2px solid #BBDEFB; font-weight: bold; }
         
-        /* 1. 웹(표) 영역 (좌측) */
+        /* 좌측 표 영역 */
         .web-section { flex: 2; display: flex; flex-direction: column; background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(30, 136, 229, 0.05); border: 1px solid #E3F2FD; }
-        .web-view { flex: 1; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #E3F2FD; }
+        .web-view { flex: 1; overflow-y: auto; overflow-x: auto; border: 1px solid #E3F2FD; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; min-width: 700px; }
         th { background-color: #64B5F6; color: white; padding: 14px; position: sticky; top: 0; z-index: 10; font-weight: 500; }
         td { padding: 12px; border-bottom: 1px solid #E3F2FD; }
         tr:hover { background-color: #F1F8FF; }
         .canceled-row td { color: #9E9E9E; text-decoration: line-through; background-color: #FAFAFA; }
         
-        /* 2. 모바일(앱) 영역 (우측) */
+        /* 우측 앱 영역 */
         .app-section { flex: 1; min-width: 350px; max-width: 400px; display: flex; flex-direction: column; background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(30, 136, 229, 0.05); border: 1px solid #E3F2FD; }
         .mobile-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 5px; }
-        .card { background: #FFFFFF; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); font-size: 13px; border: 1px solid #E3F2FD; border-left: 4px solid #42A5F5; }
+        .card { background: #FFFFFF; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); font-size: 13px; border: 1px solid #E3F2FD; border-left: 4px solid #42A5F5; }
         .card.canceled { border-left-color: #E0E0E0; background-color: #FAFAFA; }
-        .card.canceled .card-price { color: #9E9E9E; text-decoration: line-through; }
-        .card-header { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #F0F0F0; padding-bottom: 8px; }
-        .card-time { color: #555; font-size: 12px; font-weight: bold; }
-        .card-price { font-weight: bold; color: #1E88E5; font-size: 16px; }
-        .card-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #F0F0F0; padding-bottom: 8px; }
+        .card-price { font-weight: bold; color: #1E88E5; font-size: 15px; }
+        .card-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
         .card-label { color: #888; }
-        .card-value { font-weight: 500; color: #333; text-align: right; }
-        .badge { background: #9E9E9E; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; text-decoration: none; display: inline-block; }
+        .badge { background: #9E9E9E; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; }
 
-        /* 세련된 스크롤바 디자인 */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #F1F1F1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #BBDEFB; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #90CAF9; }
+        /* 스크롤바 커스텀 */
+        ::-webkit-scrollbar { width: 7px; height: 7px; }
+        ::-webkit-scrollbar-track { background: #F1F1F1; }
+        ::-webkit-scrollbar-thumb { background: #BBDEFB; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>📊 실시간 매출 대시보드</h1>
+    <h1>📊 실시간 매출 현황</h1>
 
     <div class="dashboard-controls">
-        <input type="date" id="dateInput" value="2026-04-16" onchange="fetchData()">
-        <select id="timeFilter" onchange="renderData()">
-            <option value="all">전체 시간대</option>
-        </select>
+        <div class="control-group">
+            <input type="date" id="dateInput" value="2026-04-16" onchange="fetchData()">
+            <select id="timeFilter" onchange="renderData()">
+                <option value="all">전체 시간대</option>
+            </select>
+            <button class="download-btn" onclick="downloadExcel()">📁 엑셀 다운로드</button>
+        </div>
         
-        <div class="stats-panel">
-            <div class="stat-pay">결제: <span id="payCount">0</span>건</div>
-            <div class="stat-cancel">취소: <span id="cancelCount">0</span>건</div>
+        <div class="stats-container">
+            <div class="stats-panel">
+                <span>결제: <span id="payCount">0</span>건</span>
+                <span class="stat-cancel">취소: <span id="cancelCount">0</span>건</span>
+            </div>
+            <div class="total-panel">
+                총액: <span id="totalAmount">0</span>원
+            </div>
         </div>
     </div>
 
     <div class="layout-wrapper">
-        
         <div class="web-section">
-            <h2 class="section-title">💻 웹 화면 뷰</h2>
+            <h2 class="section-title">💻 상세 리스트 (웹 형식)</h2>
             <div class="web-view">
                 <table>
                     <thead>
@@ -85,134 +95,123 @@
                             <th>결제금액</th>
                         </tr>
                     </thead>
-                    <tbody id="web-tbody">
-                        <tr><td colspan="7">데이터를 불러오는 중입니다...</td></tr>
-                    </tbody>
+                    <tbody id="web-tbody"></tbody>
                 </table>
             </div>
         </div>
 
         <div class="app-section">
-            <h2 class="section-title">📱 앱 화면 뷰</h2>
-            <div class="mobile-view" id="mobile-container">
-                <p>데이터를 불러오는 중입니다...</p>
-            </div>
+            <h2 class="section-title">📱 카드 뷰 (앱 형식)</h2>
+            <div class="mobile-view" id="mobile-container"></div>
         </div>
-
     </div>
 
     <script>
         const sid = "019C502F-6E25-75DD-BC5F-235895CEC4BA";
         const token = "Bearer vcY8HTFgT0xYVyRmu9I8fuwYJD6RCZZmoAaHDP4sZZTS1Me7kwygyLgtPBqZgz8y";
         let allSalesData = [];
+        let filteredList = []; // 현재 필터링된 리스트를 따로 저장 (엑셀용)
 
-        // 시간대 필터 옵션 생성
+        // 시간대 옵션 자동생성
         const timeSelect = document.getElementById('timeFilter');
         for (let i = 0; i < 24; i++) {
-            const hour = String(i).padStart(2, '0');
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = `${hour}시 단위`;
-            timeSelect.appendChild(option);
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = `${String(i).padStart(2, '0')}시 단위`;
+            timeSelect.appendChild(opt);
         }
 
         function formatDate(unixTime) {
             const date = new Date(unixTime * 1000);
-            const h = String(date.getHours()).padStart(2, '0');
-            const min = String(date.getMinutes()).padStart(2, '0');
-            const sec = String(date.getSeconds()).padStart(2, '0');
-            return `${h}:${min}:${sec}`;
+            return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
         }
 
         async function fetchData() {
-            const selectedDate = document.getElementById('dateInput').value;
-            const api_url = `https://store-api.sikdae.com/v1/store/coupon/group?sid=${sid}&date=${selectedDate}&page=1&pageRow=1000`;
+            const date = document.getElementById('dateInput').value;
+            const url = `https://store-api.sikdae.com/v1/store/coupon/group?sid=${sid}&date=${date}&page=1&pageRow=1000`;
             
             try {
-                document.getElementById('web-tbody').innerHTML = '<tr><td colspan="7">데이터를 불러오는 중입니다...</td></tr>';
-                document.getElementById('mobile-container').innerHTML = '<p>데이터를 불러오는 중입니다...</p>';
-
-                const response = await fetch(api_url, {
-                    headers: { "Authorization": token }
-                });
-                
-                const data = await response.json();
+                const res = await fetch(url, { headers: { "Authorization": token } });
+                const data = await res.json();
                 allSalesData = data.sales || [];
-                
                 renderData();
-            } catch (error) {
-                const errorMsg = '<p style="color:#9E9E9E; text-align:center;">데이터를 불러오는 데 실패했습니다.<br>(토큰 만료 의심)</p>';
-                document.getElementById('web-tbody').innerHTML = `<tr><td colspan="7">${errorMsg}</td></tr>`;
-                document.getElementById('mobile-container').innerHTML = errorMsg;
+            } catch (e) {
+                alert("데이터를 가져오지 못했습니다. 토큰 만료를 확인하세요.");
             }
         }
 
         function renderData() {
-            const timeFilterValue = document.getElementById('timeFilter').value;
+            const timeFilter = document.getElementById('timeFilter').value;
             
-            let filteredList = allSalesData;
-            if (timeFilterValue !== 'all') {
-                filteredList = allSalesData.filter(item => {
-                    const itemDate = new Date(item.useDate * 1000);
-                    return itemDate.getHours() === parseInt(timeFilterValue);
-                });
-            }
+            // 필터링 적용
+            filteredList = timeFilter === 'all' ? allSalesData : allSalesData.filter(item => new Date(item.useDate * 1000).getHours() === parseInt(timeFilter));
 
-            let payCount = 0;
-            let cancelCount = 0;
-            let webHtml = '';
-            let mobileHtml = '';
+            let payCount = 0, cancelCount = 0, totalAmount = 0;
+            let webHtml = '', mobileHtml = '';
 
-            if (filteredList.length === 0) {
-                webHtml = '<tr><td colspan="7" style="color:#888;">해당 조건의 결제 내역이 없습니다.</td></tr>';
-                mobileHtml = '<p style="color:#888; text-align:center; padding:20px 0;">해당 조건의 결제 내역이 없습니다.</p>';
-            } else {
-                filteredList.forEach(item => {
-                    if (item.isCanceled) cancelCount++;
-                    else payCount++;
+            filteredList.forEach(item => {
+                const isCanceled = item.isCanceled;
+                if (isCanceled) cancelCount++;
+                else {
+                    payCount++;
+                    totalAmount += item.price; // 취소되지 않은 금액만 합산
+                }
 
-                    const timeStr = formatDate(item.useDate);
-                    const priceStr = item.price.toLocaleString() + '원';
-                    const typeStr = item.couponType === 'SINGLE' ? '혼자결제' : item.couponType;
-                    const statusHtml = item.isCanceled ? '<span class="badge">취소됨</span>' : '정상승인';
-                    const rowClass = item.isCanceled ? 'canceled-row' : '';
-                    const cardClass = item.isCanceled ? 'card canceled' : 'card';
+                const timeStr = formatDate(item.useDate);
+                const priceStr = item.price.toLocaleString();
+                const status = isCanceled ? '<span class="badge">취소됨</span>' : '정상';
 
-                    // 웹 뷰 HTML
-                    webHtml += `
-                        <tr class="${rowClass}">
-                            <td>${item.payRoomIdx}</td>
-                            <td>${timeStr}</td>
-                            <td>${item.comName}</td>
-                            <td>${item.leaderName}</td>
-                            <td>${item.menuName}</td>
-                            <td>${statusHtml}</td>
-                            <td style="font-weight:bold;">${priceStr}</td>
-                        </tr>
-                    `;
+                webHtml += `
+                    <tr class="${isCanceled ? 'canceled-row' : ''}">
+                        <td>${item.payRoomIdx}</td>
+                        <td>${timeStr}</td>
+                        <td>${item.comName}</td>
+                        <td>${item.leaderName}</td>
+                        <td>${item.menuName}</td>
+                        <td>${status}</td>
+                        <td style="font-weight:bold;">${priceStr}원</td>
+                    </tr>`;
 
-                    // 앱 뷰 HTML
-                    mobileHtml += `
-                        <div class="${cardClass}">
-                            <div class="card-header">
-                                <span class="card-time">${timeStr} ${statusHtml}</span>
-                                <span class="card-price">${priceStr}</span>
-                            </div>
-                            <div class="card-row"><span class="card-label">결제번호</span><span class="card-value">${item.payRoomIdx}</span></div>
-                            <div class="card-row"><span class="card-label">회사명</span><span class="card-value">${item.comName}</span></div>
-                            <div class="card-row"><span class="card-label">결제자</span><span class="card-value">${item.leaderName}</span></div>
-                            <div class="card-row"><span class="card-label">메뉴</span><span class="card-value">${item.menuName} (${typeStr})</span></div>
+                mobileHtml += `
+                    <div class="card ${isCanceled ? 'canceled' : ''}">
+                        <div class="card-header">
+                            <span style="font-weight:bold;">${timeStr} ${status}</span>
+                            <span class="card-price">${priceStr}원</span>
                         </div>
-                    `;
-                });
-            }
+                        <div class="card-row"><span class="card-label">결제자</span><span>${item.leaderName} (${item.comName})</span></div>
+                        <div class="card-row"><span class="card-label">메뉴</span><span>${item.menuName}</span></div>
+                    </div>`;
+            });
 
-            document.getElementById('web-tbody').innerHTML = webHtml;
-            document.getElementById('mobile-container').innerHTML = mobileHtml;
+            document.getElementById('web-tbody').innerHTML = webHtml || '<tr><td colspan="7">데이터가 없습니다.</td></tr>';
+            document.getElementById('mobile-container').innerHTML = mobileHtml || '<p style="text-align:center; padding:20px; color:#888;">데이터가 없습니다.</p>';
             document.getElementById('payCount').innerText = payCount;
             document.getElementById('cancelCount').innerText = cancelCount;
+            document.getElementById('totalAmount').innerText = totalAmount.toLocaleString();
         }
-        
+
+        // 엑셀 다운로드 기능
+        function downloadExcel() {
+            if (filteredList.length === 0) return alert("다운로드할 데이터가 없습니다.");
+
+            const dataToExport = filteredList.map(item => ({
+                "결제번호": item.payRoomIdx,
+                "시간": formatDate(item.useDate),
+                "회사명": item.comName,
+                "결제자": item.leaderName,
+                "메뉴명": item.menuName,
+                "상태": item.isCanceled ? "취소" : "정상",
+                "금액": item.price
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "매출현황");
+            
+            const date = document.getElementById('dateInput').value;
+            XLSX.writeFile(workbook, `매출현황_${date}.xlsx`);
+        }
+
         fetchData();
     </script>
 </body>
