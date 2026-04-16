@@ -34,16 +34,24 @@
         table { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; min-width: 650px; }
         th { background-color: #64B5F6; color: white; padding: 12px; position: sticky; top: 0; z-index: 10; font-weight: 500; }
         td { padding: 10px; border-bottom: 1px solid #E3F2FD; }
-        .canceled-row td { color: #B0BEC5; text-decoration: line-through; background-color: #FAFAFA; }
+        
+        /* 취소된 행 스타일 (강조된 빨간색) */
+        .canceled-row td { color: #D32F2F; background-color: #FFEBEE; }
+        .canceled-row td:last-child { text-decoration: line-through; } /* 금액에만 취소선 적용 */
 
         /* 우측: 앱 뷰 */
         .app-section { flex: 1; min-width: 340px; max-width: 380px; }
         .mobile-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 5px; }
         .card { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #E3F2FD; border-left: 4px solid #42A5F5; font-size: 13px; }
-        .card.canceled { border-left-color: #CFD8DC; background-color: #FAFAFA; opacity: 0.8; }
+        
+        /* 취소된 카드 스타일 (강조된 빨간색) */
+        .card.canceled { border-left-color: #D32F2F; background-color: #FFEBEE; opacity: 0.9; }
+        .card.canceled .card-price { color: #D32F2F; text-decoration: line-through; }
+        
         .card-header { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #F5F5F5; padding-bottom: 6px; font-weight: bold; }
         .card-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
         .label { color: #888; }
+        .card.canceled .label { color: #D32F2F; opacity: 0.8; }
 
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #BBDEFB; border-radius: 10px; }
@@ -64,14 +72,14 @@
                 </div>
                 <div class="stats-row">
                     <div class="stat-item">결제: <span id="webPayCnt">0</span>건</div>
-                    <div class="stat-item" style="color:#78909C">취소: <span id="webCanCnt">0</span>건</div>
+                    <div class="stat-item" style="color:#D32F2F; background:#FFEBEE;">취소: <span id="webCanCnt">0</span>건</div>
                     <div class="total-box">총 <span id="webTotal">0</span>원</div>
                 </div>
             </div>
             <div class="web-view">
                 <table>
                     <thead>
-                        <tr><th>결제번호</th><th>시간</th><th>회사명</th><th>결제자</th><th>메뉴명</th><th>상태</th><th>금액</th></tr>
+                        <tr><th>결제번호</th><th>시간</th><th>회사명</th><th>결제자</th><th>메뉴명</th><th>사용형태</th><th>결제금액</th></tr>
                     </thead>
                     <tbody id="webTableBody"></tbody>
                 </table>
@@ -86,7 +94,7 @@
                 </div>
                 <div class="stats-row">
                     <div class="stat-item">결제: <span id="appPayCnt">0</span>건</div>
-                    <div class="stat-item" style="color:#78909C">취소: <span id="appCanCnt">0</span>건</div>
+                    <div class="stat-item" style="color:#D32F2F; background:#FFEBEE;">취소: <span id="appCanCnt">0</span>건</div>
                     <div class="total-box" style="flex:1.5">총 <span id="appTotal">0</span>원</div>
                 </div>
             </div>
@@ -99,7 +107,6 @@
         const sid = "019C502F-6E25-75DD-BC5F-235895CEC4BA";
         const token = "Bearer vcY8HTFgT0xYVyRmu9I8fuwYJD6RCZZmoAaHDP4sZZTS1Me7kwygyLgtPBqZgz8y";
         
-        // 데이터 저장소 분리
         let dataStore = { web: [], app: [] };
 
         // 초기화
@@ -133,20 +140,28 @@
                 if (item.isCanceled) canCnt++;
                 else { payCnt++; total += item.price; }
                 
-                const timeStr = new Date(item.useDate * 1000).toLocaleTimeString('ko-KR', {hour12:false});
+                const d = new Date(item.useDate * 1000);
+                const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+                
                 const priceStr = item.price.toLocaleString();
+                
+                // 취소된 건이면 무조건 '취소건'으로 표출, 아니면 원래 형태(혼자/함께결제 등) 표출
+                let usageType = item.couponType === 'SINGLE' ? '혼자결제' : (item.couponType === 'GROUP' ? '함께결제' : item.couponType);
+                if (item.isCanceled) {
+                    usageType = '<span style="font-weight:bold;">취소건</span>';
+                }
 
                 if (type === 'web') {
                     html += `<tr class="${item.isCanceled ? 'canceled-row' : ''}">
                         <td>${item.payRoomIdx}</td><td>${timeStr}</td><td>${item.comName}</td>
                         <td>${item.leaderName}</td><td>${item.menuName}</td>
-                        <td>${item.isCanceled ? '취소' : '정상'}</td><td style="font-weight:bold;">${priceStr}원</td>
+                        <td>${usageType}</td><td style="font-weight:bold;">${priceStr}원</td>
                     </tr>`;
                 } else {
                     html += `<div class="card ${item.isCanceled ? 'canceled' : ''}">
-                        <div class="card-header"><span>${timeStr}</span><span>${priceStr}원</span></div>
+                        <div class="card-header"><span>${timeStr}</span><span class="card-price">${priceStr}원</span></div>
                         <div class="card-row"><span class="label">결제자</span><span>${item.leaderName} (${item.comName})</span></div>
-                        <div class="card-row"><span class="label">상태</span><span>${item.isCanceled ? '취소됨' : '정상승인'}</span></div>
+                        <div class="card-row"><span class="label">사용형태</span><span>${usageType}</span></div>
                     </div>`;
                 }
             });
@@ -164,14 +179,27 @@
             const list = timeVal === 'all' ? dataStore.web : dataStore.web.filter(i => new Date(i.useDate * 1000).getHours() === parseInt(timeVal));
             if (list.length === 0) return alert("데이터가 없습니다.");
             
-            const ws = XLSX.utils.json_to_sheet(list.map(i => ({
-                "번호": i.payRoomIdx, "시간": new Date(i.useDate * 1000).toLocaleString(),
-                "회사": i.comName, "이름": i.leaderName, "메뉴": i.menuName,
-                "상태": i.isCanceled ? "취소" : "정상", "금액": i.price
-            })));
+            const ws = XLSX.utils.json_to_sheet(list.map(i => {
+                const d = new Date(i.useDate * 1000);
+                const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+                
+                // 엑셀에서도 취소건으로 텍스트 변경
+                let usageType = i.couponType === 'SINGLE' ? '혼자결제' : (i.couponType === 'GROUP' ? '함께결제' : i.couponType);
+                if (i.isCanceled) usageType = '취소건';
+                
+                return {
+                    "결제번호": i.payRoomIdx, 
+                    "시간": timeStr,
+                    "회사명": i.comName, 
+                    "결제자": i.leaderName, 
+                    "메뉴명": i.menuName,
+                    "사용형태": usageType,
+                    "결제금액": i.price
+                };
+            }));
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "매출");
-            XLSX.writeFile(wb, `매출_${document.getElementById('webDate').value}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, "매출현황");
+            XLSX.writeFile(wb, `매출현황_${document.getElementById('webDate').value}.xlsx`);
         }
 
         fetchData('web'); fetchData('app');
