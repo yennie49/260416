@@ -4,26 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>실시간 매출 현황</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; background-color: #F0F7FF; margin: 0; padding: 20px; color: #333; overflow: hidden; }
-        h1 { font-size: 22px; margin: 0 0 20px 0; text-align: center; color: #1E88E5; }
+        /* 기본 폰트를 프리텐다드로 변경 */
+        body { font-family: 'Pretendard', 'Malgun Gothic', sans-serif; background-color: #F0F7FF; margin: 0; padding: 20px; color: #333; overflow: hidden; }
+        h1 { font-size: 24px; margin: 0 0 20px 0; text-align: center; color: #1E88E5; font-weight: 700; }
         
         .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
-        .input-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .input-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .stats-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 5px; }
-        input, select { padding: 8px 12px; border: 1px solid #BBDEFB; border-radius: 6px; font-size: 13px; outline: none; background: #fff; }
         
-        /* 버튼화된 통계 박스 스타일 */
+        input[type="date"], select { padding: 8px 10px; border: 1px solid #BBDEFB; border-radius: 6px; font-size: 14px; outline: none; background: #fff; font-family: 'Pretendard', sans-serif; }
+        .date-separator { font-weight: bold; color: #1565C0; }
+
         .stat-btn { cursor: pointer; transition: all 0.2s; user-select: none; }
         .stat-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .stat-btn:active { transform: translateY(0); }
-        .inactive-filter { opacity: 0.3 !important; filter: grayscale(50%); } /* 선택되지 않은 버튼은 흐리게 */
+        .inactive-filter { opacity: 0.3 !important; filter: grayscale(50%); }
 
-        .stat-item { font-size: 13px; font-weight: bold; color: #1565C0; background: #E3F2FD; padding: 8px 12px; border-radius: 6px; flex: 1; text-align: center; border: 1px solid #BBDEFB; }
-        .total-box { background: #2196F3; color: white; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-align: center; font-weight: bold; box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2); border: 1px solid #1E88E5; }
+        .stat-item { font-size: 14px; font-weight: 700; color: #1565C0; background: #E3F2FD; padding: 10px 12px; border-radius: 6px; flex: 1; text-align: center; border: 1px solid #BBDEFB; }
+        .total-box { background: #2196F3; color: white; padding: 10px 12px; border-radius: 6px; font-size: 15px; text-align: center; font-weight: 700; box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2); border: 1px solid #1E88E5; }
 
-        .download-btn { background-color: #1976D2; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: bold; }
+        .download-btn { background-color: #1976D2; color: white; border: none; padding: 9px 15px; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 700; font-family: 'Pretendard', sans-serif; }
         .download-btn:hover { background-color: #1565C0; }
 
         .layout-wrapper { display: flex; gap: 20px; height: calc(100vh - 80px); }
@@ -31,23 +34,26 @@
         
         .web-section { flex: 2; min-width: 0; }
         .web-view { flex: 1; overflow: auto; border: 1px solid #E3F2FD; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; min-width: 650px; }
-        th { background-color: #64B5F6; color: white; padding: 12px; position: sticky; top: 0; z-index: 10; font-weight: 500; }
-        td { padding: 10px; border-bottom: 1px solid #E3F2FD; }
+        
+        /* 웹 뷰 폰트 사이즈 16px로 대폭 확대 및 여백 조정 */
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 16px; min-width: 800px; }
+        th { background-color: #64B5F6; color: white; padding: 14px 12px; position: sticky; top: 0; z-index: 10; font-weight: 600; letter-spacing: 0.5px; }
+        td { padding: 12px; border-bottom: 1px solid #E3F2FD; }
         .canceled-row td { color: #D32F2F; background-color: #FFEBEE; }
         .canceled-row td:last-child { text-decoration: line-through; } 
 
         .app-section { flex: 1; min-width: 340px; max-width: 380px; }
-        .mobile-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 5px; }
-        .card { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #E3F2FD; border-left: 4px solid #42A5F5; font-size: 13px; }
+        .mobile-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 5px; }
+        /* 앱 뷰는 모바일 환경을 고려해 14px 유지 */
+        .card { background: #fff; border-radius: 10px; padding: 16px; border: 1px solid #E3F2FD; border-left: 4px solid #42A5F5; font-size: 14px; }
         .card.canceled { border-left-color: #D32F2F; background-color: #FFEBEE; opacity: 0.9; }
         .card.canceled .card-price { color: #D32F2F; text-decoration: line-through; }
-        .card-header { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #F5F5F5; padding-bottom: 6px; font-weight: bold; }
-        .card-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-        .label { color: #888; }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #F5F5F5; padding-bottom: 8px; font-weight: 700; }
+        .card-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .label { color: #888; font-weight: 500; }
         .card.canceled .label { color: #D32F2F; opacity: 0.8; }
 
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-thumb { background: #BBDEFB; border-radius: 10px; }
     </style>
 </head>
@@ -59,7 +65,10 @@
         <div class="section web-section">
             <div class="controls">
                 <div class="input-row">
-                    <input type="date" id="webDate" onchange="fetchData('web')">
+                    <input type="date" id="webStartDate" onchange="fetchData('web')"> 
+                    <span class="date-separator">~</span>
+                    <input type="date" id="webEndDate" onchange="fetchData('web')">
+                    
                     <select id="webTime" onchange="setFilter('web', 'all')"><option value="all">전체 시간대</option></select>
                     <button class="download-btn" onclick="downloadExcel()">📁 엑셀 다운로드</button>
                 </div>
@@ -82,7 +91,11 @@
         <div class="section app-section">
             <div class="controls">
                 <div class="input-row">
-                    <input type="date" id="appDate" onchange="fetchData('app')" style="flex:1">
+                    <input type="date" id="appStartDate" onchange="fetchData('app')" style="flex:1"> 
+                    <span class="date-separator">~</span>
+                    <input type="date" id="appEndDate" onchange="fetchData('app')" style="flex:1">
+                </div>
+                <div class="input-row">
                     <select id="appTime" onchange="setFilter('app', 'all')" style="flex:1"><option value="all">전체 시간대</option></select>
                 </div>
                 <div class="stats-row">
@@ -100,14 +113,18 @@
             const today = new Date();
             return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         }
-        document.getElementById('webDate').value = getTodayDate();
-        document.getElementById('appDate').value = getTodayDate();
+        
+        // 시작일과 종료일 모두 오늘로 초기 세팅
+        document.getElementById('webStartDate').value = getTodayDate();
+        document.getElementById('webEndDate').value = getTodayDate();
+        document.getElementById('appStartDate').value = getTodayDate();
+        document.getElementById('appEndDate').value = getTodayDate();
 
         const sid = "019C502F-6E25-75DD-BC5F-235895CEC4BA";
         const token = "Bearer vcY8HTFgT0xYVyRmu9I8fuwYJD6RCZZmoAaHDP4sZZTS1Me7kwygyLgtPBqZgz8y";
         
         let dataStore = { web: [], app: [] };
-        let currentFilter = { web: 'all', app: 'all' }; // 상태 필터 기억용
+        let currentFilter = { web: 'all', app: 'all' };
 
         [document.getElementById('webTime'), document.getElementById('appTime')].forEach(sel => {
             for(let i=0; i<24; i++) {
@@ -117,18 +134,68 @@
             }
         });
 
+        // 기간 내 데이터를 모두 모아오는 함수
         async function fetchData(type) {
-            const date = document.getElementById(type + 'Date').value;
-            const url = `https://store-api.sikdae.com/v1/store/coupon/group?sid=${sid}&date=${date}&page=1&pageRow=1000`;
+            const startDateStr = document.getElementById(type + 'StartDate').value;
+            const endDateStr = document.getElementById(type + 'EndDate').value;
+            
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+
+            if (startDate > endDate) {
+                alert("시작일이 종료일보다 늦을 수 없습니다.");
+                return;
+            }
+
+            // 서버 과부하 방지를 위해 최대 31일까지만 조회 제한
+            const diffTime = Math.abs(endDate - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays > 31) {
+                alert("기간 조회는 최대 31일까지만 가능합니다.");
+                return;
+            }
+
+            // 로딩 표시
+            if (type === 'web') document.getElementById('webTableBody').innerHTML = '<tr><td colspan="7" style="padding:30px; color:#1E88E5; font-weight:bold;">데이터를 불러오는 중입니다...</td></tr>';
+            else document.getElementById('appCardContainer').innerHTML = '<p style="text-align:center; padding:30px; color:#1E88E5; font-weight:bold;">데이터를 불러오는 중입니다...</p>';
+
+            let fetchPromises = [];
+            
+            // 시작일부터 종료일까지 하루씩 더해가며 API 요청 주소 생성
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const dateParam = `${yyyy}-${mm}-${dd}`;
+                
+                const url = `https://store-api.sikdae.com/v1/store/coupon/group?sid=${sid}&date=${dateParam}&page=1&pageRow=1000`;
+                
+                fetchPromises.push(
+                    fetch(url, { headers: { "Authorization": token } })
+                    .then(res => res.json())
+                    .catch(err => { return { sales: [] }; }) // 에러나면 빈 배열 반환
+                );
+            }
+
             try {
-                const res = await fetch(url, { headers: { "Authorization": token } });
-                const json = await res.json();
-                dataStore[type] = json.sales || [];
-                setFilter(type, 'all'); // 날짜 변경 시 '전체보기'로 초기화
-            } catch (e) { alert(type.toUpperCase() + " 데이터를 불러오지 못했습니다."); }
+                // 여러 날짜의 데이터를 한 번에 가져옴
+                const results = await Promise.all(fetchPromises);
+                
+                let combinedSales = [];
+                results.forEach(json => {
+                    if (json.sales) combinedSales = combinedSales.concat(json.sales);
+                });
+
+                // 최신 결제건이 위로 오도록 시간순 정렬 (내림차순)
+                combinedSales.sort((a, b) => b.useDate - a.useDate);
+
+                dataStore[type] = combinedSales;
+                setFilter(type, 'all'); 
+            } catch (e) { 
+                alert(type.toUpperCase() + " 데이터를 불러오지 못했습니다."); 
+            }
         }
 
-        // 필터 선택(결제/취소/총액) 시 UI 효과를 주고 렌더링
         function setFilter(type, filterState) {
             currentFilter[type] = filterState;
             
@@ -136,7 +203,6 @@
             const btnCan = document.getElementById(type + 'BtnCan');
             const btnTotal = document.getElementById(type + 'BtnTotal');
             
-            // 시각적 강조 효과 처리
             btnPay.classList.remove('inactive-filter');
             btnCan.classList.remove('inactive-filter');
             btnTotal.classList.remove('inactive-filter');
@@ -154,10 +220,8 @@
 
         function render(type) {
             const timeVal = document.getElementById(type + 'Time').value;
-            // 1. 시간대 필터 적용
             const timeFilteredList = timeVal === 'all' ? dataStore[type] : dataStore[type].filter(i => new Date(i.useDate * 1000).getHours() === parseInt(timeVal));
             
-            // 2. 상단 숫자 통계용 계산 (상태 필터와 무관하게 시간대 기준으로만 계산)
             let payCnt = 0, canCnt = 0, total = 0;
             timeFilteredList.forEach(item => {
                 if (item.isCanceled) canCnt++;
@@ -167,22 +231,25 @@
             document.getElementById(type + 'CanCnt').innerText = canCnt;
             document.getElementById(type + 'Total').innerText = total.toLocaleString();
 
-            // 3. 상태(결제/취소/전체) 필터 적용
             const filterState = currentFilter[type];
             const finalList = timeFilteredList.filter(item => {
                 if (filterState === 'pay') return !item.isCanceled;
                 if (filterState === 'cancel') return item.isCanceled;
-                return true; // 'all'
+                return true; 
             });
 
             let html = '';
             if (finalList.length === 0) {
-                if (type === 'web') html = '<tr><td colspan="7" style="color:#888; padding:30px;">조건에 맞는 데이터가 없습니다.</td></tr>';
-                else html = '<p style="text-align:center; color:#888; padding:30px;">조건에 맞는 데이터가 없습니다.</p>';
+                if (type === 'web') html = '<tr><td colspan="7" style="color:#888; padding:30px;">조회된 데이터가 없습니다.</td></tr>';
+                else html = '<p style="text-align:center; color:#888; padding:30px;">조회된 데이터가 없습니다.</p>';
             } else {
                 finalList.forEach(item => {
                     const d = new Date(item.useDate * 1000);
+                    // 기간 조회가 가능해졌으므로 시간 앞에 MM.DD 날짜도 함께 표시
+                    const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
                     const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+                    const fullTimeStr = `${dateStr} ${timeStr}`;
+                    
                     const priceStr = item.price.toLocaleString();
                     
                     let usageType = item.couponType === 'SINGLE' ? '혼자결제' : (item.couponType === 'GROUP' ? '함께결제' : item.couponType);
@@ -190,13 +257,13 @@
 
                     if (type === 'web') {
                         html += `<tr class="${item.isCanceled ? 'canceled-row' : ''}">
-                            <td>${item.payRoomIdx}</td><td>${timeStr}</td><td>${item.comName}</td>
+                            <td>${item.payRoomIdx}</td><td>${fullTimeStr}</td><td>${item.comName}</td>
                             <td>${item.leaderName}</td><td>${item.menuName}</td>
                             <td>${usageType}</td><td style="font-weight:bold;">${priceStr}원</td>
                         </tr>`;
                     } else {
                         html += `<div class="card ${item.isCanceled ? 'canceled' : ''}">
-                            <div class="card-header"><span>${timeStr}</span><span class="card-price">${priceStr}원</span></div>
+                            <div class="card-header"><span>${fullTimeStr}</span><span class="card-price">${priceStr}원</span></div>
                             <div class="card-row"><span class="label">결제번호</span><span>${item.payRoomIdx}</span></div>
                             <div class="card-row"><span class="label">결제자</span><span>${item.leaderName} (${item.comName})</span></div>
                             <div class="card-row"><span class="label">메뉴명</span><span>${item.menuName}</span></div>
@@ -214,7 +281,6 @@
             const timeVal = document.getElementById('webTime').value;
             const timeFilteredList = timeVal === 'all' ? dataStore.web : dataStore.web.filter(i => new Date(i.useDate * 1000).getHours() === parseInt(timeVal));
             
-            // 엑셀도 현재 화면에 보이는 상태(결제/취소/전체) 필터를 똑같이 적용
             const filterState = currentFilter.web;
             const finalList = timeFilteredList.filter(item => {
                 if (filterState === 'pay') return !item.isCanceled;
@@ -226,18 +292,26 @@
             
             const ws = XLSX.utils.json_to_sheet(finalList.map(i => {
                 const d = new Date(i.useDate * 1000);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+                
                 let usageType = i.couponType === 'SINGLE' ? '혼자결제' : (i.couponType === 'GROUP' ? '함께결제' : i.couponType);
                 if (i.isCanceled) usageType = '취소건';
                 
                 return {
-                    "결제번호": i.payRoomIdx, "시간": timeStr, "회사명": i.comName, 
+                    "결제번호": i.payRoomIdx, "일자": dateStr, "시간": timeStr, "회사명": i.comName, 
                     "결제자": i.leaderName, "메뉴명": i.menuName, "사용형태": usageType, "결제금액": i.price
                 };
             }));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "매출현황");
-            XLSX.writeFile(wb, `매출현황_${document.getElementById('webDate').value}.xlsx`);
+            
+            // 엑셀 파일명에 기간 표시
+            const start = document.getElementById('webStartDate').value;
+            const end = document.getElementById('webEndDate').value;
+            const fileName = start === end ? `매출현황_${start}.xlsx` : `매출현황_${start}_to_${end}.xlsx`;
+            
+            XLSX.writeFile(wb, fileName);
         }
 
         fetchData('web'); fetchData('app');
