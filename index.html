@@ -37,7 +37,7 @@
         
         /* 취소된 행 스타일 (강조된 빨간색) */
         .canceled-row td { color: #D32F2F; background-color: #FFEBEE; }
-        .canceled-row td:last-child { text-decoration: line-through; } /* 금액에만 취소선 적용 */
+        .canceled-row td:last-child { text-decoration: line-through; } 
 
         /* 우측: 앱 뷰 */
         .app-section { flex: 1; min-width: 340px; max-width: 380px; }
@@ -104,6 +104,16 @@
     </div>
 
     <script>
+        // 오늘 날짜로 기본값 세팅하기 위한 함수
+        function getTodayDate() {
+            const today = new Date();
+            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        }
+
+        // 페이지 로드 시 날짜를 오늘로 설정 (선택사항)
+        document.getElementById('webDate').value = getTodayDate();
+        document.getElementById('appDate').value = getTodayDate();
+
         const sid = "019C502F-6E25-75DD-BC5F-235895CEC4BA";
         const token = "Bearer vcY8HTFgT0xYVyRmu9I8fuwYJD6RCZZmoAaHDP4sZZTS1Me7kwygyLgtPBqZgz8y";
         
@@ -145,7 +155,6 @@
                 
                 const priceStr = item.price.toLocaleString();
                 
-                // 취소된 건이면 무조건 '취소건'으로 표출, 아니면 원래 형태(혼자/함께결제 등) 표출
                 let usageType = item.couponType === 'SINGLE' ? '혼자결제' : (item.couponType === 'GROUP' ? '함께결제' : item.couponType);
                 if (item.isCanceled) {
                     usageType = '<span style="font-weight:bold;">취소건</span>';
@@ -158,9 +167,12 @@
                         <td>${usageType}</td><td style="font-weight:bold;">${priceStr}원</td>
                     </tr>`;
                 } else {
+                    // 여기에 결제번호와 메뉴명을 다시 추가했습니다!
                     html += `<div class="card ${item.isCanceled ? 'canceled' : ''}">
                         <div class="card-header"><span>${timeStr}</span><span class="card-price">${priceStr}원</span></div>
+                        <div class="card-row"><span class="label">결제번호</span><span>${item.payRoomIdx}</span></div>
                         <div class="card-row"><span class="label">결제자</span><span>${item.leaderName} (${item.comName})</span></div>
+                        <div class="card-row"><span class="label">메뉴명</span><span>${item.menuName}</span></div>
                         <div class="card-row"><span class="label">사용형태</span><span>${usageType}</span></div>
                     </div>`;
                 }
@@ -183,7 +195,6 @@
                 const d = new Date(i.useDate * 1000);
                 const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
                 
-                // 엑셀에서도 취소건으로 텍스트 변경
                 let usageType = i.couponType === 'SINGLE' ? '혼자결제' : (i.couponType === 'GROUP' ? '함께결제' : i.couponType);
                 if (i.isCanceled) usageType = '취소건';
                 
